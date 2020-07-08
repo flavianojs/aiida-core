@@ -97,7 +97,7 @@ jobs:
       matrix:
         # Python version 3.7.7 is pinned due to issue #4256.
         # The pinning should be removed as soon as issue #3709 is resolved.
-        python-version: [3.5, 3.6, 3.7.7, 3.8]
+        python-version: [3.6, 3.7.7, 3.8]
         backend: ['django', 'sqlalchemy']
 
     services:
@@ -134,10 +134,6 @@ jobs:
         sudo apt install postgresql-10 graphviz
 
     - run: pip install --upgrade pip
-
-    - name: upgrade setuptools [py35]
-      if: matrix.python-version == 3.5
-      run: pip install -I setuptools==42.0.0
 
     - name: Install aiida-core
       run: |
