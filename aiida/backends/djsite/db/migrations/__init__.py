@@ -21,7 +21,7 @@ class DeserializationException(AiidaException):
     pass
 
 
-LATEST_MIGRATION = '0044_dbgroup_type_string'
+LATEST_MIGRATION = '0045_add_node_repository_metadata'
 
 
 def _update_schema_version(version, apps, _):
