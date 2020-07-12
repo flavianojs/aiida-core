@@ -30,7 +30,7 @@ class TestNode(AiidaTestCase):
     def test_repository_garbage_collection(self):
         """Verify that the repository sandbox folder is cleaned after the node instance is garbage collected."""
         node = Data()
-        dirpath = node._repository._get_temp_folder().abspath  # pylint: disable=protected-access
+        dirpath = node._repository.backend.sandbox.abspath  # pylint: disable=protected-access
 
         self.assertTrue(os.path.isdir(dirpath))
         del node
@@ -52,6 +52,7 @@ class TestNode(AiidaTestCase):
         node = Data()
         assert node.repository_metadata == {}
 
+        # Even after storing the metadata should be empty, since it contains no files
         node.store()
         assert node.repository_metadata == {}
 
@@ -61,7 +62,7 @@ class TestNode(AiidaTestCase):
         assert node.repository_metadata == repository_metadata
 
         node.store()
-        assert node.repository_metadata == repository_metadata
+        assert node.repository_metadata != repository_metadata
 
 
 class TestNodeAttributesExtras(AiidaTestCase):

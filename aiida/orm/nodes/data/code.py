@@ -500,7 +500,7 @@ class Code(Data):
 
         :return: list of lists where each entry consists of two elements: a key and a value
         """
-        from aiida.orm.utils.repository import FileType
+        from aiida.repository import FileType
 
         result = []
         result.append(['PK', self.pk])
@@ -517,7 +517,7 @@ class Code(Data):
             result.append(['Exec name', self.get_execname()])
             result.append(['List of files/folders:', ''])
             for obj in self.list_objects():
-                if obj.type == FileType.DIRECTORY:
+                if obj.file_type == FileType.DIRECTORY:
                     result.append(['directory', obj.name])
                 else:
                     result.append(['file', obj.name])

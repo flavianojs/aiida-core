@@ -22,7 +22,6 @@ from aiida.common.links import LinkType
 from aiida.common.warnings import AiidaDeprecationWarning
 from aiida.manage.manager import get_manager
 from aiida.orm.utils.links import LinkManager, LinkTriple
-from aiida.orm.utils.repository import Repository
 from aiida.orm.utils.node import AbstractNodeMeta, validate_attribute_extra_key
 from aiida.orm import autogroup
 
@@ -32,13 +31,14 @@ from ..entities import Entity
 from ..entities import Collection as EntityCollection
 from ..querybuilder import QueryBuilder
 from ..users import User
+from .repository import NodeRepositoryMixin
 
 __all__ = ('Node',)
 
 _NO_DEFAULT = tuple()
 
 
-class Node(Entity, metaclass=AbstractNodeMeta):
+class Node(NodeRepositoryMixin, Entity, metaclass=AbstractNodeMeta):
     """
     Base class for all nodes in AiiDA.
 
@@ -79,9 +79,7 @@ class Node(Entity, metaclass=AbstractNodeMeta):
                     'cannot delete Node<{}> because it has outgoing links'.format(node.pk)
                 )
 
-            repository = node._repository  # pylint: disable=protected-access
             self._backend.nodes.delete(node_id)
-            repository.erase(force=True)
 
     # This will be set by the metaclass call
     _logger = None
@@ -96,16 +94,12 @@ class Node(Entity, metaclass=AbstractNodeMeta):
     # Flag that determines whether the class can be cached.
     _cachable = False
 
-    # Base path within the repository where to put objects by default
-    _repository_base_path = 'path'
-
     # Flag that determines whether the class can be stored.
     _storable = False
     _unstorable_message = 'only Data, WorkflowNode, CalculationNode or their subclasses can be stored'
 
     # These are to be initialized in the `initialization` method
     _incoming_cache = None
-    _repository = None
 
     @classmethod
     def from_backend_entity(cls, backend_entity):
@@ -156,9 +150,6 @@ class Node(Entity, metaclass=AbstractNodeMeta):
 
         # A cache of incoming links represented as a list of LinkTriples instances
         self._incoming_cache = list()
-
-        # Calls the initialisation from the RepositoryMixin
-        self._repository = Repository(uuid=self.uuid, is_stored=self.is_stored, base_path=self._repository_base_path)
 
     def _validate(self):
         """Check if the attributes and files retrieved from the database are valid.
@@ -647,116 +638,6 @@ class Node(Entity, metaclass=AbstractNodeMeta):
         """
         return self.backend_entity.extras_keys()
 
-    def list_objects(self, key=None):
-        """Return a list of the objects contained in this repository, optionally in the given sub directory.
-
-        :param key: fully qualified identifier for the object within the repository
-        :return: a list of `File` named tuples representing the objects present in directory with the given key
-        :raises FileNotFoundError: if the `path` does not exist in the repository of this node
-        """
-        return self._repository.list_objects(key)
-
-    def list_object_names(self, key=None):
-        """Return a list of the object names contained in this repository, optionally in the given sub directory.
-
-        :param key: fully qualified identifier for the object within the repository
-        :return: a list of `File` named tuples representing the objects present in directory with the given key
-        """
-        return self._repository.list_object_names(key)
-
-    def open(self, key, mode='r'):
-        """Open a file handle to an object stored under the given key.
-
-        :param key: fully qualified identifier for the object within the repository
-        :param mode: the mode under which to open the handle
-        """
-        return self._repository.open(key, mode)
-
-    def get_object(self, key):
-        """Return the object identified by key.
-
-        :param key: fully qualified identifier for the object within the repository
-        :return: a `File` named tuple representing the object located at key
-        """
-        return self._repository.get_object(key)
-
-    def get_object_content(self, key, mode='r'):
-        """Return the content of a object identified by key.
-
-        :param key: fully qualified identifier for the object within the repository
-        """
-        return self._repository.get_object_content(key, mode)
-
-    def put_object_from_tree(self, path, key=None, contents_only=True, force=False):
-        """Store a new object under `key` with the contents of the directory located at `path` on this file system.
-
-        .. warning:: If the repository belongs to a stored node, a `ModificationNotAllowed` exception will be raised.
-            This check can be avoided by using the `force` flag, but this should be used with extreme caution!
-
-        :param path: absolute path of directory whose contents to copy to the repository
-        :param key: fully qualified identifier for the object within the repository
-        :param contents_only: boolean, if True, omit the top level directory of the path and only copy its contents.
-        :param force: boolean, if True, will skip the mutability check
-        :raises aiida.common.ModificationNotAllowed: if repository is immutable and `force=False`
-        """
-        self._repository.put_object_from_tree(path, key, contents_only, force)
-
-    def put_object_from_file(self, path, key, mode=None, encoding=None, force=False):
-        """Store a new object under `key` with contents of the file located at `path` on this file system.
-
-        .. warning:: If the repository belongs to a stored node, a `ModificationNotAllowed` exception will be raised.
-            This check can be avoided by using the `force` flag, but this should be used with extreme caution!
-
-        :param path: absolute path of file whose contents to copy to the repository
-        :param key: fully qualified identifier for the object within the repository
-        :param mode: the file mode with which the object will be written
-            Deprecated: will be removed in `v2.0.0`
-        :param encoding: the file encoding with which the object will be written
-            Deprecated: will be removed in `v2.0.0`
-        :param force: boolean, if True, will skip the mutability check
-        :raises aiida.common.ModificationNotAllowed: if repository is immutable and `force=False`
-        """
-        # Note that the defaults of `mode` and `encoding` had to be change to `None` from `w` and `utf-8` resptively, in
-        # order to detect when they were being passed such that the deprecation warning can be emitted. The defaults did
-        # not make sense and so ignoring them is justified, since the side-effect of this function, a file being copied,
-        # will continue working the same.
-        if mode is not None:
-            warnings.warn('the `mode` argument is deprecated and will be removed in `v2.0.0`', AiidaDeprecationWarning)  # pylint: disable=no-member
-
-        if encoding is not None:
-            warnings.warn(  # pylint: disable=no-member
-                'the `encoding` argument is deprecated and will be removed in `v2.0.0`', AiidaDeprecationWarning
-            )
-
-        self._repository.put_object_from_file(path, key, mode, encoding, force)
-
-    def put_object_from_filelike(self, handle, key, mode='w', encoding='utf8', force=False):
-        """Store a new object under `key` with contents of filelike object `handle`.
-
-        .. warning:: If the repository belongs to a stored node, a `ModificationNotAllowed` exception will be raised.
-            This check can be avoided by using the `force` flag, but this should be used with extreme caution!
-
-        :param handle: filelike object with the content to be stored
-        :param key: fully qualified identifier for the object within the repository
-        :param mode: the file mode with which the object will be written
-        :param encoding: the file encoding with which the object will be written
-        :param force: boolean, if True, will skip the mutability check
-        :raises aiida.common.ModificationNotAllowed: if repository is immutable and `force=False`
-        """
-        self._repository.put_object_from_filelike(handle, key, mode, encoding, force)
-
-    def delete_object(self, key, force=False):
-        """Delete the object from the repository.
-
-        .. warning:: If the repository belongs to a stored node, a `ModificationNotAllowed` exception will be raised.
-            This check can be avoided by using the `force` flag, but this should be used with extreme caution!
-
-        :param key: fully qualified identifier for the object within the repository
-        :param force: boolean, if True, will skip the mutability check
-        :raises aiida.common.ModificationNotAllowed: if repository is immutable and `force=False`
-        """
-        self._repository.delete_object(key, force)
-
     def add_comment(self, content, user=None):
         """Add a new comment.
 
@@ -1075,18 +956,21 @@ class Node(Entity, metaclass=AbstractNodeMeta):
         :param with_transaction: if False, do not use a transaction because the caller will already have opened one.
         :param clean: boolean, if True, will clean the attributes and extras before attempting to store
         """
-        # First store the repository folder such that if this fails, there won't be an incomplete node in the database.
-        # On the flipside, in the case that storing the node does fail, the repository will now have an orphaned node
-        # directory which will have to be cleaned manually sometime.
-        self._repository.store()
+        from aiida.repository import Repository
+        from aiida.repository.backend import DiskObjectStoreRepositoryBackend, SandboxRepositoryBackend
 
-        try:
-            links = self._incoming_cache
-            self._backend_entity.store(links, with_transaction=with_transaction, clean=clean)
-        except Exception:
-            # I put back the files in the sandbox folder since the transaction did not succeed
-            self._repository.restore()
-            raise
+        # Only if the backend repository is a sandbox do we have to clone its contents to the permanent repository.
+        if isinstance(self._repository.backend, SandboxRepositoryBackend):
+            backend = DiskObjectStoreRepositoryBackend(container=get_manager().get_profile().get_repository_container())
+            repository = Repository(backend=backend)
+            repository.clone(self._repository)
+            # Swap the sandbox repository for the new permanent repository instance which should delete the sandbox
+            self._repository_instance = repository
+
+        self.repository_metadata = self._repository.serialize()
+
+        links = self._incoming_cache
+        self._backend_entity.store(links, with_transaction=with_transaction, clean=clean)
 
         self._incoming_cache = list()
         self._backend_entity.set_extra(_HASH_EXTRA_KEY, self.get_hash())
@@ -1105,7 +989,16 @@ class Node(Entity, metaclass=AbstractNodeMeta):
                 )
 
     def _store_from_cache(self, cache_node, with_transaction):
-        """Store this node from an existing cache node."""
+        """Store this node from an existing cache node.
+
+        .. note::
+
+            With the current implementation of the backend repository, which automatically deduplicates the content that
+            it contains, we do not have to copy the contents of the source node. Since the content should be exactly
+            equal, the repository will already contain it and there is nothing to copy. We simply replace the current
+            ``repository`` instance with a clone of that of the source node, which does not actually copy any files.
+
+        """
         from aiida.orm.utils.mixins import Sealable
         assert self.node_type == cache_node.node_type
 
@@ -1116,16 +1009,12 @@ class Node(Entity, metaclass=AbstractNodeMeta):
         self.label = cache_node.label
         self.description = cache_node.description
 
+        # Make sure to reinitialize the repository instance of the clone to that of the source node.
+        self._repository = copy.copy(cache_node._repository)  # pylint: disable=protected-access
+
         for key, value in cache_node.attributes.items():
             if key != Sealable.SEALED_KEY:
                 self.set_attribute(key, value)
-
-        # The erase() removes the current content of the sandbox folder.
-        # If this was not done, the content of the sandbox folder could
-        # become mangled when copying over the content of the cache
-        # source repository folder.
-        self._repository.erase()
-        self.put_object_from_tree(cache_node._repository._get_base_folder().abspath)  # pylint: disable=protected-access
 
         self._store(with_transaction=with_transaction, clean=False)
         self._add_outputs_from_cache(cache_node)
@@ -1166,7 +1055,7 @@ class Node(Entity, metaclass=AbstractNodeMeta):
                 for key, val in self.attributes_items()
                 if key not in self._hash_ignored_attributes and key not in self._updatable_attributes  # pylint: disable=unsupported-membership-test
             },
-            self._repository._get_base_folder(),  # pylint: disable=protected-access
+            self._repository.hash(),
             self.computer.uuid if self.computer is not None else None
         ]
         return objects

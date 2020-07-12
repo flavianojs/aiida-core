@@ -478,6 +478,7 @@ class ProcessNode(Sealable, Node):
         """
         if not (super().is_valid_cache and self.is_finished):
             return False
+
         try:
             process_class = self.process_class
         except ValueError as exc:
@@ -485,8 +486,8 @@ class ProcessNode(Sealable, Node):
                 "Not considering {} for caching, '{!r}' when accessing its process class.".format(self, exc)
             )
             return False
-        # For process functions, the `process_class` does not have an
-        # is_valid_cache attribute
+
+        # For process functions, the `process_class` does not have an is_valid_cache attribute
         try:
             is_valid_cache_func = process_class.is_valid_cache
         except AttributeError:

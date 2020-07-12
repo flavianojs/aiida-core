@@ -8,6 +8,7 @@
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
 """Data class that can be used to store a single file in its repository."""
+import contextlib
 import inspect
 import os
 import warnings
@@ -56,17 +57,19 @@ class SinglefileData(Data):
         """
         return self.get_attribute('filename')
 
-    def open(self, key=None, mode='r'):
+    @contextlib.contextmanager
+    def open(self, path=None, mode='r'):
         """Return an open file handle to the content of this data node.
 
-        :param key: optional key within the repository, by default is the `filename` set in the attributes
+        :param path: the relative path of the object within the repository.
         :param mode: the mode with which to open the file handle (default: read mode)
         :return: a file handle
         """
-        if key is None:
-            key = self.filename
+        if path is None:
+            path = self.filename
 
-        return self._repository.open(key, mode=mode)
+        with super().open(path, mode=mode) as handle:
+            yield handle
 
     def get_content(self):
         """Return the content of the single file stored for this data node.
