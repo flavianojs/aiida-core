@@ -4,8 +4,10 @@
 
 name: Performance benchmarks
 
-on:
-  push:
+on: [push, pull_request]
+
+# on:
+#   push:
     # branches:
     #   - benchmark-test-cjs
 
