@@ -6,8 +6,8 @@ name: Performance benchmarks
 
 on:
   push:
-    branches:
-      - benchmark-test-cjs
+    # branches:
+    #   - benchmark-test-cjs
 
 jobs:
 
