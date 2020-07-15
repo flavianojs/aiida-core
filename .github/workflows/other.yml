@@ -1,4 +1,4 @@
-name: continuous-integration
+name: continuous-integration2
 
 on: [push, pull_request]
 
