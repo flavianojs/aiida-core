@@ -11,12 +11,34 @@ on:
 jobs:
 
   benchmarks:
+
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
+        backend: ['django', 'sqlalchemy']
+
+    services:
+      postgres:
+        image: postgres:12.3
+        env:
+          POSTGRES_DB: test_${{ matrix.backend }}
+          POSTGRES_PASSWORD: ''
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      rabbitmq:
+        image: rabbitmq:3.8.3
+        ports:
+          - 5672:5672
 
     steps:
     - uses: actions/checkout@v2
@@ -31,8 +53,12 @@ jobs:
         pip install --no-deps -e .
         reentry scan
         pip freeze
+
     - name: Run benchmarks
+      env:
+        AIIDA_TEST_BACKEND: ${{ matrix.backend }}
       run: pytest --benchmark-only --benchmark-json output.json
+
     - name: Store benchmark result
       ## Run only on push on develop! Otherwise people (or other branches) might access to the github-actions branch
       ## This is currently disabled because we are in a workflow that has the correct 'on' settings (only push,
