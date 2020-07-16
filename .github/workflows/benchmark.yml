@@ -12,14 +12,14 @@ jobs:
 
   benchmarks:
 
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
         backend: ['django', 'sqlalchemy']
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -66,7 +66,7 @@ jobs:
       #if: "github.event_name == 'push' && github.ref == 'refs/heads/develop'"
       uses: rhysd/github-action-benchmark@v1
       with:
-        name: "Benchmark on ${{ matrix.os }}"
+        name: "Benchmark on ${{ matrix.os }} with ${{ matrix.backend }}"
         tool: "pytest"
         output-file-path: output.json
         github-token: ${{ secrets.GITHUB_TOKEN }}
