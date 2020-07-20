@@ -172,9 +172,9 @@ def migrate(input_file, output_file, force, silent, archive_format, version):
     with SandboxFolder(sandbox_in_repo=False) as folder:
 
         if zipfile.is_zipfile(input_file):
-            extract_zip(input_file, folder, silent=silent)
+            extract_zip(input_file, folder)
         elif tarfile.is_tarfile(input_file):
-            extract_tar(input_file, folder, silent=silent)
+            extract_tar(input_file, folder)
         else:
             echo.echo_critical('invalid file format, expected either a zip archive or gzipped tarball')
 
