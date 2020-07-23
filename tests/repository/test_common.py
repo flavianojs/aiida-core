@@ -10,9 +10,9 @@ from aiida.repository import FileObject, FileType
 def file_object() -> FileObject:
     """Test fixture to create and return a ``FileObject`` instance."""
     name = 'relative'
-    file_type = FileType.FILE
-    key = 'abcdef'
-    objects = {'sub': FileObject()}
+    file_type = FileType.DIRECTORY
+    key = None
+    objects = {'sub': FileObject('sub', file_type=FileType.FILE, key='abcdef')}
     return FileObject(name, file_type, key, objects)
 
 
@@ -28,15 +28,26 @@ def test_constructor():
 def test_constructor_kwargs(file_object: FileObject):
     """Test the constructor specifying specific keyword arguments."""
     name = 'relative'
-    file_type = FileType.FILE
-    key = 'abcdef'
+    file_type = FileType.DIRECTORY
+    key = None
     objects = {'sub': FileObject()}
     file_object = FileObject(name, file_type, key, objects)
 
-    assert file_object.name == 'relative'
-    assert file_object.file_type == FileType.FILE
-    assert file_object.key == 'abcdef'
+    assert file_object.name == name
+    assert file_object.file_type == file_type
+    assert file_object.key == key
     assert file_object.objects == objects
+
+    name = 'relative'
+    file_type = FileType.FILE
+    key = 'abcdef'
+    objects = None
+    file_object = FileObject(name, file_type, key, objects)
+
+    assert file_object.name == name
+    assert file_object.file_type == file_type
+    assert file_object.key == key
+    assert file_object.objects == {}
 
 
 def test_constructor_kwargs_invalid():
@@ -55,22 +66,26 @@ def test_constructor_kwargs_invalid():
     with pytest.raises(TypeError):
         FileObject(name, file_type, 123, objects)
 
-    with pytest.raises(TypeError):
-        FileObject(name, file_type, key, {'sub': FileObject, 'wrong': 'type'})
+    with pytest.raises(ValueError, match=r'an object of type `FileType.FILE` cannot define any objects.'):
+        FileObject(name, FileType.FILE, key, {})
+
+    with pytest.raises(ValueError, match=r'an object of type `FileType.DIRECTORY` cannot define a key.'):
+        FileObject(name, FileType.DIRECTORY, key, {})
 
 
-def test_serialize(file_object: FileObject):
+def test_serialize():
     """Test the ``FileObject.serialize`` method."""
+    objects = {
+        'empty': FileObject('empty', file_type=FileType.DIRECTORY),
+        'file.txt': FileObject('file.txt', file_type=FileType.FILE, key='abcdef'),
+    }
+    file_object = FileObject(file_type=FileType.DIRECTORY, objects=objects)
+
     expected = {
-        'name': file_object.name,
-        'file_type': file_object.file_type.value,
-        'key': file_object.key,
-        'objects': {
-            'sub': {
-                'name': '',
-                'file_type': FileType.DIRECTORY.value,
-                'key': None,
-                'objects': {},
+        'o': {
+            'empty': {},
+            'file.txt': {
+                'k': 'abcdef',
             }
         }
     }
@@ -81,7 +96,7 @@ def test_serialize(file_object: FileObject):
 def test_serialize_roundtrip(file_object: FileObject):
     """Test the serialization round trip."""
     serialized = file_object.serialize()
-    reconstructed = FileObject.from_serialized(serialized)
+    reconstructed = FileObject.from_serialized(serialized, file_object.name)
 
     assert isinstance(reconstructed, FileObject)
     assert file_object == reconstructed
@@ -105,5 +120,19 @@ def test_eq():
 
     assert file_object != FileObject(name='custom')
     assert file_object != FileObject(file_type=FileType.FILE)
-    assert file_object != FileObject(key='123456')
+    assert file_object != FileObject(key='123456', file_type=FileType.FILE)
     assert file_object != FileObject(objects={'sub': FileObject()})
+
+    # Test ordering of nested files:
+    objects = {
+        'empty': FileObject('empty', file_type=FileType.DIRECTORY),
+        'file.txt': FileObject('file.txt', file_type=FileType.FILE, key='abcdef'),
+    }
+    file_object_a = FileObject(file_type=FileType.DIRECTORY, objects=objects)
+    objects = {
+        'file.txt': FileObject('file.txt', file_type=FileType.FILE, key='abcdef'),
+        'empty': FileObject('empty', file_type=FileType.DIRECTORY),
+    }
+    file_object_b = FileObject(file_type=FileType.DIRECTORY, objects=objects)
+
+    assert file_object_a == file_object_b
