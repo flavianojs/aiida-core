@@ -64,6 +64,7 @@ def test_delete(benchmark):
 @pytest.mark.usefixtures('clear_database_before_test')
 @pytest.mark.benchmark(group='engine')
 def test_calcfunction(benchmark):
+    """Run a simple calcfunction."""
 
     @calcfunction
     def _calcfunction(node):
