@@ -38,6 +38,7 @@ def test_store_backend(benchmark):
 @pytest.mark.usefixtures('clear_database_before_test')
 @pytest.mark.benchmark(group='node', min_rounds=100)
 def test_store(benchmark):
+    """Store a node."""
     benchmark(get_node)
 
 
