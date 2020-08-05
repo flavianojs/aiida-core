@@ -54,7 +54,7 @@ def test_delete_backend(benchmark):
 @pytest.mark.usefixtures('clear_database_before_test')
 @pytest.mark.benchmark(group='node')
 def test_delete(benchmark):
-
+    """Delete a node. """
     def _run(node):
         Data.objects.delete(node.pk)  # pylint: disable=no-member
 
