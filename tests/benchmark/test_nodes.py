@@ -86,6 +86,7 @@ def test_workchain(benchmark):
         return get_node(store=False)[1]["node"]
 
     class _Wc(WorkChain):
+
         @classmethod
         def define(cls, spec):
             super().define(spec)
