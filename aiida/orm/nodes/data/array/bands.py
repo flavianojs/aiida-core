@@ -59,7 +59,7 @@ def find_bandgap(bandsdata, number_electrons=None, fermi_energy=None):
       used with care, because the occupations could be smeared so at a
       non-zero temperature, with the unwanted effect that the conduction bands
       might be occupied in an insulator.
-      Prefer to pass the number_of_electrons explicitly
+      Prefer to pass the number_electrons explicitly
 
     :note: Only one between number_electrons and fermi_energy can be specified at the
       same time.
