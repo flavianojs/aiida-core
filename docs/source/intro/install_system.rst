@@ -234,23 +234,6 @@ This is the *recommended* installation method to setup AiiDA on a personal lapto
 
    ---
 
-   **Setup profile**
-
-   Next, set up an AiiDA configuration profile and related data storage, with the ``verdi quicksetup`` command.
-
-   .. code-block:: console
-
-       (aiida) $ verdi quicksetup
-       Info: enter "?" for help
-       Info: enter "!" to ignore the default and set no value
-       Profile name: me
-       Email Address (for sharing data): me@user.com
-       First name: my
-       Last name: name
-       Institution: where-i-work
-
-   ---
-
    **Check setup**
 
    To check that everything is set up correctly, execute:
